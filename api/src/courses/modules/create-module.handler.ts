@@ -18,39 +18,37 @@ export const createModuleSchema = z.object({
 export const createModuleHandler: RequestHandler = async (req, res, next) => {
   try {
     const data = await createModuleSchema.parseAsync(req.body);
-    const courseId = await IdSchema.parseAsync(req.params.courseId);
-    const newModule = await db.$transaction(async (tx) => {
-      // Create new module
-      const moduleRecord = await tx.module.create({
-        data: {
-          title: data.title,
-          courseId: courseId,
-          topics: {
-            createMany: {
-              data: data.topics,
-            },
-          },
-        },
-      });
 
-      // Update the module order in course table
-      await db.course.update({
-        where: {
-          id: courseId,
-        },
-        data: {
-          modulesOrder: {
-            push: moduleRecord.id,
+    const courseId = await IdSchema.parseAsync(req.params.courseId);
+
+    const newModule = await db.module.create({
+      data: {
+        title: data.title,
+        courseId: courseId,
+        topics: {
+          createMany: {
+            data: data.topics,
           },
         },
-      });
-      return moduleRecord;
+      },
+    });
+
+    await db.course.update({
+      where: {
+        id: courseId,
+      },
+      data: {
+        modulesOrder: {
+          push: newModule.id,
+        },
+      },
     });
 
     return res.json({
       title: newModule.title,
       id: newModule.id,
     });
+
   } catch (error) {
     next(error);
   }
